@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2f6f62">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="재단배치">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>필름 재단 배치표</title>
+<style>
+  :root{
+    --bg:#f6f5f2; --card:#fff; --ink:#1e2124; --sub:#6b7076; --line:#e3e1dc;
+    --accent:#2f6f62; --accent-weak:#e4efec; --warn:#b4541f; --warn-weak:#fbeee5;
+    --scrap:#d2483a; --r:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+    font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+  .wrap{max-width:980px;margin:0 auto;padding:12px 14px 70px}
+  .top{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:10px;padding:10px 0 8px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+  .top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;flex:none}
+  .seg button{border:none;border-radius:0;padding:6px 11px;background:#fff;font-size:13px}
+  .seg button.on{background:var(--accent);color:#fff}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+  .card h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:520px){.grid2{grid-template-columns:1fr}}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--sub)}
+  input,textarea,select{font:inherit;font-size:16px;color:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 9px;background:#fff;width:100%}
+  textarea{min-height:70px;resize:vertical}
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--accent-weak);border-color:var(--accent)}
+  .chk{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:10px}
+  .chk input{width:18px;height:18px}
+  .hint{font-size:12px;color:var(--sub);margin-top:6px}
+  button{font:inherit;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;color:var(--ink)}
+  button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn)}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  a{color:var(--accent)}
+  table{width:100%;border-collapse:collapse}
+  /* 부재 입력 줄: PC는 한 줄, 휴대폰은 두 줄 */
+  .prow{display:grid;grid-template-columns:minmax(140px,1fr) 84px 84px 60px 90px 34px;
+    grid-template-areas:"name w h qty film del";gap:6px;align-items:end;margin-bottom:6px}
+  .phead{font-size:12px;color:var(--sub);margin-bottom:4px;align-items:center}
+  .phead span:first-child{padding-left:30px}
+  .prow .nm{grid-area:name;display:flex;align-items:center;gap:6px;min-width:0}
+  .prow .nm input{flex:1;min-width:0}
+  .prow .pw{grid-area:w}.prow .ph{grid-area:h}.prow .pq{grid-area:qty}.prow .pf{grid-area:film}
+  .prow .del{grid-area:del;border:none;background:none;color:var(--sub);font-size:20px;padding:6px 4px;align-self:center}
+  .prow label{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .prow label span{display:none;font-size:11px;color:var(--sub)}
+  .prow input{padding:7px 7px}
+  @media (max-width:640px){
+    .phead{display:none}
+    .prow{grid-template-columns:1fr 1fr 0.7fr 1fr 34px;
+      grid-template-areas:"name name name name del" "w h qty film film";
+      padding:10px 0;margin:0;border-bottom:1px solid #eeece7}
+    .prow label span{display:block}
+  }
+  .idx{display:inline-block;min-width:22px;height:22px;border-radius:6px;text-align:center;font-size:12px;line-height:22px;font-weight:600;color:#1e2124;padding:0 3px}
+  .quick{display:none;margin-top:10px}
+  .quick.on{display:block}
+  .quick textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:14px}
+  .warns{background:var(--warn-weak);color:var(--warn);border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+  .warns div+div{margin-top:3px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+  .stat{background:var(--accent-weak);border-radius:10px;padding:9px 11px}
+  .stat b{display:block;font-size:19px}
+  .stat span{font-size:12px;color:var(--sub)}
+  .film-block + .film-block{border-top:1px dashed var(--line);padding-top:16px;margin-top:18px}
+  .film-title{font-weight:700;font-size:16px;margin-bottom:8px}
+  .layout-wrap{display:grid;grid-template-columns:minmax(240px,400px) 1fr;gap:14px;align-items:start}
+  @media (max-width:720px){.layout-wrap{grid-template-columns:1fr}}
+  .svgbox{background:#fbfaf7;border:1px solid var(--line);border-radius:10px;padding:8px}
+  .svgbox svg{width:100%;height:auto;display:block}
+  .cut th{font-size:12px;color:var(--sub);font-weight:500;text-align:left;border-bottom:1px solid var(--line);padding:5px 4px}
+  .cut td{font-size:13px;border-bottom:1px solid #f0eee9;padding:6px 4px;vertical-align:top}
+  .cut .rot{color:var(--accent);font-weight:600}
+  .sub-h{font-size:13px;font-weight:700;margin:14px 0 4px}
+  .scrap-w{color:var(--scrap);font-weight:700}
+  .muted{color:var(--sub)}
+  .empty{color:var(--sub);text-align:center;padding:24px 0;font-size:14px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1e2124;color:#fff;padding:9px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+  .toast.on{opacity:1}
+  .scroll-x{overflow-x:auto}
+  /* list */
+  .toolbar{display:flex;gap:8px;margin-bottom:10px}
+  .toolbar input{flex:1}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .chips button{border-radius:999px;padding:5px 11px;font-size:13px}
+  .chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .site{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
+  .site .row1{display:flex;align-items:center;gap:8px}
+  .site .nm{font-weight:700;font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .site .meta{font-size:13px;color:var(--sub);margin-top:3px}
+  .st{font-size:12px;border-radius:999px;padding:2px 9px;flex:none;font-weight:600}
+  .st-0{background:#eceae5;color:#55595e}.st-1{background:#e3ecf8;color:#2e5c95}.st-2{background:#fbf0d6;color:#8a6410}.st-3{background:var(--accent-weak);color:var(--accent)}
+  .inline-link{font-size:12px;margin-left:6px;white-space:nowrap}
+  .modebar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:-2px 0 12px}
+  .modebar .hint{margin:0;flex:1;min-width:200px}
+  .cmp{background:#f4f2ec;border-radius:8px;padding:8px 10px;font-size:13px;margin:-4px 0 12px}
+  .lbl-row{display:flex;justify-content:space-between;align-items:baseline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <button class="ghost" id="back" style="display:none;padding:6px 9px">← 목록</button>
+    <h1 id="title">필름 재단 배치표</h1>
+    <div class="seg" id="unit-seg"><button data-u="cm">cm</button><button data-u="mm">mm</button></div>
+  </div>
+
+  <!-- ===== 현장 목록 ===== -->
+  <div id="view-list">
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="현장명·주소·메모 검색">
+      <button class="pri" id="new-site">+ 새 현장</button>
+    </div>
+    <div class="chips" id="filter"></div>
+    <div id="site-list"></div>
+    <div class="card">
+      <h2>백업</h2>
+      <div class="hint" style="margin-top:0">현장 기록은 이 휴대폰 브라우저에만 저장됩니다. 브라우저 데이터를 지우거나 휴대폰을 바꾸면 사라지니, 가끔 백업 파일로 내보내 두세요.</div>
+      <div class="btns">
+        <button id="export">백업 파일 내보내기</button>
+        <button id="import">백업 불러오기</button>
+        <input id="import-file" type="file" accept=".json,application/json" style="display:none">
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 현장 상세 ===== -->
+  <div id="view-site" style="display:none">
+    <div class="card">
+      <h2>현장 정보</h2>
+      <div class="grid2">
+        <label class="f">현장명<input id="i-name" placeholder="예: 래미안 101동 1203호"></label>
+        <div class="grid2" style="grid-template-columns:1fr 1fr">
+          <label class="f">날짜<input id="i-date" type="date"></label>
+          <label class="f">진행 상태<select id="i-status"></select></label>
+        </div>
+        <label class="f"><span class="lbl-row">주소<a id="map-link" class="inline-link" target="_blank" rel="noopener">지도 열기</a></span><input id="i-addr" placeholder="주소"></label>
+        <label class="f"><span class="lbl-row">고객 연락처<a id="tel-link" class="inline-link">전화 걸기</a></span><input id="i-contact" type="tel" placeholder="010-0000-0000"></label>
+      </div>
+      <label class="f" style="margin-top:10px">메모<textarea id="i-memo" placeholder="필름 품번, 특이사항 등"></textarea></label>
+    </div>
+
+    <div class="card">
+      <h2>설정</h2>
+      <div class="grid">
+        <label class="f"><span>롤 폭 (<span class="u"></span>)</span><input id="s-roll" type="number" inputmode="decimal"></label>
+        <label class="f"><span>여유분, 한쪽 (<span class="u"></span>)</span><input id="s-margin" type="number" inputmode="decimal"></label>
+        <label class="f"><span>부재 사이 간격 (<span class="u"></span>)</span><input id="s-gap" type="number" inputmode="decimal"></label>
+        <label class="f"><span>이음 겹침 (<span class="u"></span>)</span><input id="s-overlap" type="number" inputmode="decimal"></label>
+        <label class="f">롤 길이 (m)<input id="s-rolllen" type="number" inputmode="decimal"></label>
+        <label class="f">필름 단가 (원/m, 선택)<input id="s-price" type="number" inputmode="numeric"></label>
+      </div>
+      <label class="chk"><input id="s-rotate" type="checkbox"> 90° 회전 허용</label>
+      <div class="hint">나뭇결이나 패턴처럼 방향이 있는 필름이면 회전을 끄세요. 끄면 부재의 <b>세로</b>가 항상 롤 길이 방향으로 놓입니다. 여유분은 사방에 더해지고, 롤 폭보다 큰 부재는 자동으로 나눈 뒤 이음 겹침만큼 더 잘라냅니다. 이 설정은 다음에 만드는 새 현장의 기본값이 됩니다.</div>
+    </div>
+
+    <div class="card">
+      <h2>부재 목록 <span class="muted" style="font-size:12px;font-weight:400">단위 <span class="u"></span></span></h2>
+      <div class="prow phead"><span>이름</span><span>가로</span><span>세로</span><span>수량</span><span>필름</span><span></span></div>
+      <div id="rows"></div>
+      <div class="btns">
+        <button class="pri" id="add">+ 부재 추가</button>
+        <button id="toggle-quick">빠른 입력</button>
+        <button class="ghost" id="sample">예시 불러오기</button>
+        <button class="ghost danger" id="clear">부재 전체 삭제</button>
+      </div>
+      <div class="quick" id="quick">
+        <textarea id="quick-text"></textarea>
+        <div class="btns"><button class="pri" id="quick-add">목록에 추가</button><span class="hint" style="margin:auto 0">현재 단위(<span class="u"></span>)로 읽습니다. 필름을 안 적으면 '기본'으로 묶이고, 필름이 다르면 롤을 따로 계산합니다.</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>재단 배치표 <button id="copy">결과 텍스트 복사</button></h2>
+      <div class="modebar"><div class="seg" id="mode-seg"><button data-m="film">필름 절약</button><button data-m="work">칼질 최소</button></div>
+        <span class="hint" id="mode-hint"></span></div>
+      <div id="result"></div>
+    </div>
+
+    <div class="btns" style="justify-content:space-between">
+      <button id="dup">이 현장 복사해서 새로 만들기</button>
+      <button class="danger" id="del-site">현장 삭제</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const KEY='filmcut-data-v1';
+  const STATUS=['실측 전','실측 완료','재단 완료','시공 완료'];
+  const COLORS=['#f3c9a8','#b9d8cf','#c9c3ec','#f2d78b','#b7d3ef','#efb9c4','#cfe0a6','#e5c6a5','#a9dfe3','#e0c2e6'];
+  const DEF_SET={roll:1220,margin:25,gap:0,overlap:20,rollLen:50,price:0,rotate:true}; // 길이는 모두 mm로 저장
+
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+  const clone=o=>JSON.parse(JSON.stringify(o));
+  function toast(t){const el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('on'),1700)}
+
+  // ---------- data ----------
+  let db=null;
+  try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+  if(!db||!Array.isArray(db.sites)) db={unit:'cm',defaults:clone(DEF_SET),sites:[]};
+  db.defaults=Object.assign(clone(DEF_SET),db.defaults||{});
+  if(db.unit!=='mm') db.unit='cm';
+  if(db.mode!=='work') db.mode='film';
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){toast('저장 공간이 부족해요')}}
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+
+  // ---------- units ----------
+  const U=()=>db.unit;
+  const toU=mm=>U()==='cm'?Math.round(mm)/10:Math.round(mm);
+  const fromU=v=>U()==='cm'?v*10:v;
+  const nf1=new Intl.NumberFormat('ko-KR',{maximumFractionDigits:1});
+  const fmtU=mm=>U()==='cm'?nf1.format(Math.round(mm)/10):Math.round(mm).toLocaleString('ko-KR');
+  const fmtUu=mm=>fmtU(mm)+U();
+  const fmt=n=>Math.round(n).toLocaleString('ko-KR');
+  function paintUnit(){
+    document.querySelectorAll('#unit-seg button').forEach(b=>b.classList.toggle('on',b.dataset.u===U()));
+    document.querySelectorAll('.u').forEach(el=>el.textContent=U());
+    $('quick-text').placeholder = U()==='cm'
+      ? '한 줄에 하나씩: 이름 가로 세로 [수량] [@필름]\n현관문 90 210\n방문 80x205x3 @우드\n싱크대 상판 60 240 1'
+      : '한 줄에 하나씩: 이름 가로 세로 [수량] [@필름]\n현관문 900 2100\n방문 800x2050x3 @우드\n싱크대 상판 600 2400 1';
+  }
+  document.querySelectorAll('#unit-seg button').forEach(b=>b.addEventListener('click',()=>{
+    db.unit=b.dataset.u;save();paintUnit();
+    if(cur){fillSettings();renderRows();compute()} else renderList();
+  }));
+
+  const MODE_HINT={film:'필름이 가장 적게 드는 배치예요. 대신 칼질이 많아질 수 있어요.',
+    work:'롤을 가로로 끊어 띠를 만들고, 띠 안에서 세로로만 나누는 배치예요. 칼질이 적고 일자로 길게 자르지만, 필름은 조금 더 들 수 있어요.'};
+  function paintMode(){
+    document.querySelectorAll('#mode-seg button').forEach(b=>b.classList.toggle('on',b.dataset.m===db.mode));
+    $('mode-hint').textContent=MODE_HINT[db.mode];
+  }
+  document.querySelectorAll('#mode-seg button').forEach(b=>b.addEventListener('click',()=>{
+    db.mode=b.dataset.m;save();paintMode();compute();
+  }));
+
+  // ---------- routing ----------
+  let cur=null;
+  function route(){
+    const m=location.hash.match(/^#site-([a-z0-9]+)$/);
+    cur=m?db.sites.find(s=>s.id===m[1])||null:null;
+    if(cur) showSite(); else showList();
+    window.scrollTo(0,0);
+  }
+  window.addEventListener('hashchange',route);
+  $('back').addEventListener('click',()=>{location.hash=''});
+
+  // ---------- list view ----------
+  let filter=-1;
+  function showList(){
+    $('view-list').style.display='';$('view-site').style.display='none';$('back').style.display='none';
+    $('title').textContent='필름 재단 배치표';
+    renderList();
+  }
+  function renderFilter(){
+    const f=$('filter');f.innerHTML='';
+    [['전체',-1]].concat(STATUS.map((s,i)=>[s,i])).forEach(([t,i])=>{
+      const n=i<0?db.sites.length:db.sites.filter(s=>s.status===i).length;
+      const b=document.createElement('button');b.textContent=`${t} ${n}`;if(filter===i)b.classList.add('on');
+      b.addEventListener('click',()=>{filter=i;renderList()});f.appendChild(b);
+    });
+  }
+  function renderList(){
+    renderFilter();
+    const q=$('q').value.trim().toLowerCase();
+    const list=db.sites.filter(s=>(filter<0||s.status===filter)&&
+      (!q||[s.name,s.address,s.memo,s.contact].join(' ').toLowerCase().includes(q)))
+      .sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.updated||0)-(a.updated||0));
+    const el=$('site-list');
+    if(!db.sites.length){el.innerHTML='<div class="card empty">아직 현장이 없어요. <b>+ 새 현장</b>을 눌러 시작하세요.</div>';return}
+    if(!list.length){el.innerHTML='<div class="empty">조건에 맞는 현장이 없어요</div>';return}
+    el.innerHTML='';
+    list.forEach(s=>{
+      const b=document.createElement('button');b.className='site';
+      const sm=s.summary;
+      b.innerHTML=`<div class="row1"><span class="nm">${esc(s.name||'이름 없는 현장')}</span><span class="st st-${s.status}">${STATUS[s.status]}</span></div>
+        <div class="meta">${esc(s.date||'')}${s.address?' · '+esc(s.address):''}</div>
+        <div class="meta">부재 ${s.pieces.length}종${sm&&sm.lenM?` · 필름 ${sm.lenM.toFixed(2)}m`:''}${s.memo?' · '+esc(s.memo.split('\n')[0].slice(0,30)):''}</div>`;
+      b.addEventListener('click',()=>{location.hash='site-'+s.id});
+      el.appendChild(b);
+    });
+  }
+  $('q').addEventListener('input',renderList);
+  $('new-site').addEventListener('click',()=>{
+    const s={id:uid(),name:'',date:today(),address:'',contact:'',memo:'',status:0,settings:clone(db.defaults),pieces:[],created:Date.now(),updated:Date.now()};
+    db.sites.push(s);save();location.hash='site-'+s.id;
+    setTimeout(()=>$('i-name').focus(),50);
+  });
+
+  // backup
+  $('export').addEventListener('click',()=>{
+    const blob=new Blob([JSON.stringify(db,null,1)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`재단배치표_백업_${today()}.json`;
+    document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+    toast('백업 파일을 저장했어요');
+  });
+  $('import').addEventListener('click',()=>$('import-file').click());
+  $('import-file').addEventListener('change',async e=>{
+    const f=e.target.files[0];if(!f)return;
+    try{
+      const d=JSON.parse(await f.text());
+      if(!d||!Array.isArray(d.sites)) throw 0;
+      let add=0,upd=0;
+      d.sites.forEach(s=>{
+        if(!s.id||!Array.isArray(s.pieces)) return;
+        s.settings=Object.assign(clone(DEF_SET),s.settings||{});
+        const i=db.sites.findIndex(x=>x.id===s.id);
+        if(i<0){db.sites.push(s);add++} else if((s.updated||0)>(db.sites[i].updated||0)){db.sites[i]=s;upd++}
+      });
+      save();renderList();toast(`불러옴: 새 현장 ${add}, 갱신 ${upd}`);
+    }catch(err){toast('백업 파일을 읽을 수 없어요')}
+    e.target.value='';
+  });
+
+  // ---------- site view ----------
+  function touch(){cur.updated=Date.now();save()}
+  const sel=$('i-status');STATUS.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.textContent=s;sel.appendChild(o)});
+  const INFO={name:'i-name',date:'i-date',address:'i-addr',contact:'i-contact',memo:'i-memo'};
+  Object.entries(INFO).forEach(([k,id])=>$(id).addEventListener('input',()=>{
+    cur[k]=$(id).value;touch();
+    if(k==='name') $('title').textContent=cur.name||'새 현장';
+    if(k==='address'||k==='contact') paintLinks();
+  }));
+  sel.addEventListener('change',()=>{cur.status=+sel.value;touch()});
+  function paintLinks(){
+    const a=$('map-link'),t=$('tel-link');
+    if(cur.address){a.href='https://map.naver.com/p/search/'+encodeURIComponent(cur.address);a.style.visibility=''}else a.style.visibility='hidden';
+    const tel=(cur.contact||'').replace(/[^0-9+]/g,'');
+    if(tel){t.href='tel:'+tel;t.style.visibility=''}else t.style.visibility='hidden';
+  }
+  function showSite(){
+    $('view-list').style.display='none';$('view-site').style.display='';$('back').style.display='';
+    cur.settings=Object.assign(clone(DEF_SET),cur.settings||{});
+    $('title').textContent=cur.name||'새 현장';
+    Object.entries(INFO).forEach(([k,id])=>$(id).value=cur[k]||'');
+    sel.value=cur.status||0;paintLinks();
+    $('quick').classList.remove('on');
+    fillSettings();renderRows();compute();
+  }
+
+  // settings
+  const S_LEN={roll:'s-roll',margin:'s-margin',gap:'s-gap',overlap:'s-overlap'};
+  const S_RAW={rollLen:'s-rolllen',price:'s-price'};
+  function fillSettings(){
+    const S=cur.settings;
+    Object.entries(S_LEN).forEach(([k,id])=>{$(id).value=toU(S[k]);$(id).step=U()==='cm'?'0.1':'1'});
+    Object.entries(S_RAW).forEach(([k,id])=>$(id).value=S[k]||'');
+    $('s-rotate').checked=!!S.rotate;
+  }
+  function settingsChanged(){touch();db.defaults=clone(cur.settings);save();schedule()}
+  Object.entries(S_LEN).forEach(([k,id])=>$(id).addEventListener('input',()=>{cur.settings[k]=Math.max(0,fromU(parseFloat($(id).value)||0));settingsChanged()}));
+  Object.entries(S_RAW).forEach(([k,id])=>$(id).addEventListener('input',()=>{cur.settings[k]=Math.max(0,parseFloat($(id).value)||0);settingsChanged()}));
+  $('s-rotate').addEventListener('change',e=>{cur.settings.rotate=e.target.checked;settingsChanged()});
+
+  // piece rows
+  function renderRows(){
+    const tb=$('rows');tb.innerHTML='';
+    if(!cur.pieces.length){tb.innerHTML='<div class="empty">부재를 추가하세요</div>';return}
+    const step=U()==='cm'?'0.1':'1';
+    cur.pieces.forEach((p,i)=>{
+      const tr=document.createElement('div');tr.className='prow';
+      tr.innerHTML=`<div class="nm"><span class="idx" style="background:${COLORS[i%COLORS.length]}">${i+1}</span>
+          <input data-k="name" value="${esc(p.name)}" placeholder="부재 이름 (예: 방문)"></div>
+        <label class="pw"><span>가로</span><input data-k="w" type="number" inputmode="decimal" step="${step}" value="${p.w?toU(p.w):''}"></label>
+        <label class="ph"><span>세로</span><input data-k="h" type="number" inputmode="decimal" step="${step}" value="${p.h?toU(p.h):''}"></label>
+        <label class="pq"><span>수량</span><input data-k="qty" type="number" inputmode="numeric" value="${p.qty||1}"></label>
+        <label class="pf"><span>필름</span><input data-k="film" value="${esc(p.film)}" placeholder="기본"></label>
+        <button class="del" title="삭제">×</button>`;
+      tr.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{
+        const k=inp.dataset.k,v=inp.value;
+        if(k==='name'||k==='film') p[k]=v;
+        else if(k==='qty') p.qty=parseInt(v)||0;
+        else p[k]=fromU(parseFloat(v)||0);
+        touch();schedule();
+      }));
+      tr.querySelector('.del').addEventListener('click',()=>{cur.pieces.splice(i,1);touch();renderRows();schedule()});
+      tb.appendChild(tr);
+    });
+  }
+  $('add').addEventListener('click',()=>{
+    cur.pieces.push({name:'',w:0,h:0,qty:1,film:''});touch();renderRows();
+    const ins=$('rows').querySelectorAll('.prow:last-child input');if(ins[0])ins[0].focus();
+  });
+  $('toggle-quick').addEventListener('click',()=>$('quick').classList.toggle('on'));
+  $('quick-add').addEventListener('click',()=>{
+    let n=0;
+    $('quick-text').value.split('\n').forEach(line=>{
+      let film='';const fm=line.match(/@(\S+)/);if(fm){film=fm[1];line=line.replace(fm[0],' ')}
+      line=line.replace(/(\d)\s*[x×*X]\s*(?=\d)/g,'$1 ').trim();if(!line)return;
+      const toks=line.split(/\s+/),nums=[];
+      while(toks.length&&/^\d+(\.\d+)?$/.test(toks[toks.length-1])&&nums.length<3) nums.unshift(parseFloat(toks.pop()));
+      if(nums.length<2)return;
+      cur.pieces.push({name:toks.join(' '),w:fromU(nums[0]),h:fromU(nums[1]),qty:nums[2]||1,film});n++;
+    });
+    if(n){$('quick-text').value='';touch();renderRows();schedule();toast(n+'개 추가됨')}else toast('인식된 줄이 없어요');
+  });
+  $('sample').addEventListener('click',()=>{
+    [['현관문',900,2100,1,'우드'],['방문',800,2050,3,'우드'],['문틀 세로',120,2150,8,'우드'],['문틀 상부',120,1000,4,'우드'],
+     ['싱크대 문짝',400,700,6,'화이트'],['상부장 문짝',350,650,6,'화이트'],['아일랜드 측면',900,850,2,'화이트']]
+     .forEach(([name,w,h,qty,film])=>cur.pieces.push({name,w,h,qty,film}));
+    touch();renderRows();schedule();
+  });
+  function twoTap(btn,label,fn){
+    let armed=false;
+    btn.addEventListener('click',()=>{
+      if(!armed){armed=true;btn.textContent='한 번 더 누르면 삭제';setTimeout(()=>{armed=false;btn.textContent=label},2500);return}
+      armed=false;btn.textContent=label;fn();
+    });
+  }
+  twoTap($('clear'),'부재 전체 삭제',()=>{cur.pieces=[];touch();renderRows();schedule()});
+  twoTap($('del-site'),'현장 삭제',()=>{db.sites=db.sites.filter(s=>s!==cur);save();location.hash='';toast('현장을 삭제했어요')});
+  $('dup').addEventListener('click',()=>{
+    const s=clone(cur);s.id=uid();s.name=(cur.name||'현장')+' (복사)';s.date=today();s.status=0;s.created=s.updated=Date.now();
+    db.sites.push(s);save();location.hash='site-'+s.id;toast('복사했어요');
+  });
+
+  // ---------- expand pieces (margins, splitting) — 모두 mm ----------
+  function expand(pieces,S){
+    const R=S.roll,m=S.margin,ov=S.overlap;const items=[],warns=[];
+    pieces.forEach((p,pi)=>{
+      const w=+p.w,h=+p.h,q=Math.max(1,Math.floor(+p.qty||1));
+      if(!(w>0&&h>0))return;
+      const W=w+2*m,H=h+2*m;const nm=(p.name||'').trim()||('부재 '+(pi+1));
+      const film=(p.film||'').trim()||'기본';
+      if(W<=R||(S.rotate&&H<=R)){
+        for(let k=0;k<q;k++) items.push({w:W,h:H,pi,film,name:nm,copy:q>1?k+1:0,real:[w,h],split:null});
+        return;
+      }
+      if(R<=ov){warns.push(`${nm}: 이음 겹침이 롤 폭보다 커서 계산할 수 없어요`);return}
+      const nW=Math.ceil((W-ov)/(R-ov));
+      const nH=S.rotate?Math.ceil((H-ov)/(R-ov)):Infinity;
+      const byW=nW<=nH,n=byW?nW:nH;
+      const part=Math.ceil(((byW?W:H)+(n-1)*ov)/n);
+      warns.push(`${nm}: 롤 폭(${fmtUu(R)})보다 커서 ${byW?'가로':'세로'}를 ${n}장으로 나눠 이음 (장당 ${fmtUu(part)}, 겹침 ${fmtUu(ov)} 포함)`);
+      for(let k=0;k<q;k++)for(let i=0;i<n;i++)
+        items.push({w:byW?part:W,h:byW?H:part,pi,film,name:nm,copy:q>1?k+1:0,real:[w,h],split:{n,i,axis:byW?'가로':'세로'}});
+    });
+    return {items,warns};
+  }
+
+  // ---------- guillotine strip packer ----------
+  function pack(order,R,gap,rot,rule){
+    const BIG=1e9;let free=[{x:0,y:0,w:R+gap,h:BIG}];const placed=[];let len=0;
+    for(const it of order){
+      const a=it.w+gap,b=it.h+gap;let best=null;
+      for(let fi=0;fi<free.length;fi++){
+        const f=free[fi];
+        const opts=[[a,b,false]];if(rot&&a!==b)opts.push([b,a,true]);
+        for(const [ow,oh,r] of opts){
+          if(ow>f.w||oh>f.h)continue;
+          const s1=f.y+oh,s2=f.w*Math.min(f.h,1e7)-ow*oh,s3=f.x;
+          if(!best||s1<best.s1||(s1===best.s1&&(s2<best.s2||(s2===best.s2&&s3<best.s3))))best={fi,ow,oh,r,s1,s2,s3};
+        }
+      }
+      if(!best)return null;
+      const f=free[best.fi];free.splice(best.fi,1);
+      const {ow,oh}=best;const lw=f.w-ow,lh=f.h-oh;
+      let horiz;
+      if(rule===0)horiz=lw<lh;else if(rule===1)horiz=lw>=lh;else if(rule===2)horiz=(lw*oh)>(ow*lh);else horiz=true;
+      const right=horiz?{x:f.x+ow,y:f.y,w:lw,h:oh}:{x:f.x+ow,y:f.y,w:lw,h:f.h};
+      const bottom=horiz?{x:f.x,y:f.y+oh,w:f.w,h:lh}:{x:f.x,y:f.y+oh,w:ow,h:lh};
+      if(right.w>0&&right.h>0)free.push(right);
+      if(bottom.w>0&&bottom.h>0)free.push(bottom);
+      placed.push({it,x:f.x,y:f.y,w:ow-gap,h:oh-gap,rot:best.r});
+      len=Math.max(len,f.y+oh-gap);
+    }
+    return {placed,len,rots:placed.filter(p=>p.rot).length};
+  }
+  function better(a,b){return !b||a.len<b.len-0.5||(Math.abs(a.len-b.len)<=0.5&&a.rots<b.rots)}
+  // 후보 배치를 여러 개 만든다: 필름 최소용(길로틴 + 순서 섞기)과 작업 간편용(줄 단위 배치)
+  function buildPool(items,S){
+    const R=S.roll,gap=Math.max(0,S.gap),rot=S.rotate;const pool=[];
+    const sorts=[(a,b)=>b.h-a.h||b.w-a.w,(a,b)=>b.w-a.w||b.h-a.h,(a,b)=>b.w*b.h-a.w*a.h,
+      (a,b)=>Math.max(b.w,b.h)-Math.max(a.w,a.h),(a,b)=>(b.w+b.h)-(a.w+a.h)];
+    let best=null,bestOrder=null;
+    for(const s of sorts){const ord=items.slice().sort(s);for(let r=0;r<4;r++){const res=pack(ord,R,gap,rot,r);if(res){pool.push(res);if(better(res,best)){best=res;bestOrder=ord}}}}
+    if(best){
+      let seed=12345;const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff};
+      const iters=Math.min(1500,Math.max(200,items.length*40));
+      for(let t=0;t<iters;t++){
+        const ord=bestOrder.slice();const i=Math.floor(rnd()*ord.length),j=Math.floor(rnd()*ord.length);
+        [ord[i],ord[j]]=[ord[j],ord[i]];
+        const res=pack(ord,R,gap,rot,t%4);
+        if(res&&better(res,best)){best=res;bestOrder=ord;pool.push(res)}
+      }
+    }
+    for(const o of (rot?[0,1,2]:[0]))for(const sf of [true,false])for(const t of [0,0.6,0.85]){
+      const res=shelfPack(items,R,gap,rot,o,sf,t);if(res)pool.push(res);
+    }
+    pool.forEach(c=>{c.work=analyzeCuts(c.placed,R,c.len)});
+    return pool;
+  }
+  // 줄(띠) 단위 배치: 롤을 가로로 끊어 띠를 만들고, 띠 안에서 세로로만 나눈다. 같은 크기는 한 띠에 모은다.
+  function shelfPack(items,R,gap,rot,orient,stackFirst,thr){
+    const RW=R+gap;const its=[];
+    for(const it of items){
+      let w=it.w,h=it.h,r=false;const canRot=rot&&h<=R;
+      if(w>R){if(!canRot)return null;[w,h]=[h,w];r=true}
+      else if(canRot&&w!==h){
+        if(orient===1&&w<h){[w,h]=[h,w];r=true}
+        else if(orient===2&&h<w){[w,h]=[h,w];r=true}
+      }
+      its.push({it,a:w+gap,b:h+gap,r});
+    }
+    its.sort((p,q)=>q.b-p.b||q.a-p.a);
+    const bands=[];let Y=0;const placed=[];
+    for(const o of its){
+      let done=false;
+      for(const bd of bands){
+        if(o.b>bd.h+1e-6)continue;
+        const stack=()=>{for(const c of bd.cols){if(Math.abs(c.w-o.a)<0.5&&c.used+o.b<=bd.h+1e-6){placed.push({it:o.it,x:c.x,y:bd.y+c.used,w:o.a-gap,h:o.b-gap,rot:o.r});c.used+=o.b;return true}}return false};
+        const col=()=>{if(bd.usedW+o.a<=RW+1e-6&&o.b>=thr*bd.h){const c={x:bd.usedW,w:o.a,used:o.b};bd.cols.push(c);bd.usedW+=o.a;placed.push({it:o.it,x:c.x,y:bd.y,w:o.a-gap,h:o.b-gap,rot:o.r});return true}return false};
+        if(stackFirst?(stack()||col()):(col()||stack())){done=true;break}
+      }
+      if(!done){const bd={y:Y,h:o.b,cols:[{x:0,w:o.a,used:o.b}],usedW:o.a};bands.push(bd);Y+=o.b;
+        placed.push({it:o.it,x:0,y:bd.y,w:o.a-gap,h:o.b-gap,rot:o.r})}
+    }
+    return {placed,len:Y-gap,rots:placed.filter(p=>p.rot).length};
+  }
+  // 칼질 세기: 일자로 끝까지 한 번 긋는 것을 1회로 센다. 롤을 가로지르는 칼질을 먼저 하고, 그 안에서 세로로 나눈다.
+  function analyzeCuts(placed,R,L){
+    const E=0.01;let n=0,len=0;
+    const rects=placed.map(p=>({x0:p.x,y0:p.y,x1:p.x+p.w,y1:p.y+p.h}));
+    function rec(x0,y0,x1,y1,ps,depth){
+      if(!ps.length||depth>500)return;
+      if(ps.length===1){
+        const p=ps[0];
+        if(p.x0>x0+E){n++;len+=y1-y0}
+        if(p.x1<x1-E){n++;len+=y1-y0}
+        if(p.y0>y0+E){n++;len+=p.x1-p.x0}
+        if(p.y1<y1-E){n++;len+=p.x1-p.x0}
+        return;
+      }
+      const ys=[...new Set(ps.map(p=>p.y1))].sort((a,b)=>a-b);
+      for(const c of ys){if(c>=y1-E)continue;
+        if(ps.every(p=>p.y1<=c+E||p.y0>=c-E)){n++;len+=x1-x0;
+          rec(x0,y0,x1,c,ps.filter(p=>p.y1<=c+E),depth+1);rec(x0,c,x1,y1,ps.filter(p=>p.y0>=c-E),depth+1);return}}
+      const xs=[...new Set(ps.map(p=>p.x1))].sort((a,b)=>a-b);
+      for(const c of xs){if(c>=x1-E)continue;
+        if(ps.every(p=>p.x1<=c+E||p.x0>=c-E)){n++;len+=y1-y0;
+          rec(x0,y0,c,y1,ps.filter(p=>p.x1<=c+E),depth+1);rec(c,y0,x1,y1,ps.filter(p=>p.x0>=c-E),depth+1);return}}
+      ps.forEach(p=>{n+=4;len+=2*(p.x1-p.x0)+2*(p.y1-p.y0)});
+    }
+    rec(0,0,R,L,rects,0);
+    return {n,len};
+  }
+  // 작업량: 칼질 1회는 필름 30cm만큼의 가치, 칼질 길이는 조금만 반영
+  const workCost=w=>w.n*300+w.len*0.1;
+  function pick(pool,mode){
+    if(!pool.length)return null;
+    const minLen=Math.min(...pool.map(c=>c.len));
+    if(mode==='film') return pool.filter(c=>c.len<=minLen+0.5).sort((a,b)=>workCost(a.work)-workCost(b.work))[0];
+    // 칼질 최소: 필름은 최대 20%(+30cm)까지만 더 쓰도록 제한
+    return pool.filter(c=>c.len<=minLen*1.2+300).sort((a,b)=>(a.len+workCost(a.work))-(b.len+workCost(b.work)))[0];
+  }
+
+  // ---------- 오른쪽 자투리 구간 ----------
+  function rightScraps(placed,R,L){
+    const ys=new Set([0,L]);placed.forEach(p=>{ys.add(p.y);ys.add(p.y+p.h)});
+    const arr=[...ys].filter(y=>y>=0&&y<=L).sort((a,b)=>a-b);const segs=[];
+    for(let i=0;i<arr.length-1;i++){
+      const y0=arr[i],y1=arr[i+1];if(y1-y0<0.5)continue;
+      const mid=(y0+y1)/2;let maxR=0;
+      placed.forEach(p=>{if(p.y<=mid&&p.y+p.h>mid)maxR=Math.max(maxR,p.x+p.w)});
+      const free=Math.round(R-maxR);
+      const last=segs[segs.length-1];
+      if(last&&last.free===free&&Math.abs(last.y1-y0)<0.5)last.y1=y1;else segs.push({y0,y1,free,x:maxR});
+    }
+    return segs.filter(s=>s.free>=1);
+  }
+
+  // ---------- render ----------
+  function svgFor(res,S,scraps){
+    const R=S.roll,L=Math.max(res.len,100),m=S.margin;
+    const padL=R*0.16,padT=R*0.06,padR=R*0.24;
+    const fsR=R/26;
+    let s=`<svg viewBox="${-padL} ${-padT} ${R+padL+padR} ${L+padT*2}" xmlns="http://www.w3.org/2000/svg">`;
+    s+=`<defs><pattern id="hatch" width="${R/60}" height="${R/60}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="${R/60}" stroke="#d2483a" stroke-opacity=".28" stroke-width="${R/240}"/></pattern></defs>`;
+    s+=`<rect x="0" y="0" width="${R}" height="${L}" fill="#efece4" stroke="#bdb8ad" stroke-width="${R/400}"/>`;
+    for(let y=0;y<=L+1;y+=500){
+      const major=y%1000===0;
+      s+=`<line x1="${-R*(major?0.05:0.025)}" x2="0" y1="${y}" y2="${y}" stroke="#8d8880" stroke-width="${R/500}"/>`;
+      if(major)s+=`<text x="${-R*0.065}" y="${y+fsR*0.35}" font-size="${fsR}" text-anchor="end" fill="#6b7076">${y/1000}m</text>`;
+    }
+    s+=`<text x="${R/2}" y="${-padT*0.35}" font-size="${fsR*0.85}" text-anchor="middle" fill="#6b7076">← 롤 폭 ${fmtUu(R)} →</text>`;
+    // scraps
+    scraps.forEach(g=>{
+      s+=`<rect x="${g.x}" y="${g.y0}" width="${R-g.x}" height="${g.y1-g.y0}" fill="url(#hatch)"/>`;
+    });
+    res.placed.forEach(p=>{
+      const col=COLORS[p.it.pi%COLORS.length];
+      s+=`<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="${col}" stroke="#3b3f44" stroke-width="${R/350}"/>`;
+      if(!p.it.split&&m>0){
+        const rw=p.rot?p.it.real[1]:p.it.real[0],rh=p.rot?p.it.real[0]:p.it.real[1];
+        s+=`<rect x="${p.x+m}" y="${p.y+m}" width="${rw}" height="${rh}" fill="none" stroke="#3b3f44" stroke-opacity=".45" stroke-dasharray="${R/80} ${R/120}" stroke-width="${R/600}"/>`;
+      }
+      s+=pieceLabel(p,R);
+    });
+    // scrap labels on the right side, outside the roll
+    const fsS=fsR*0.82;let lastY=-1e9;
+    scraps.forEach(g=>{
+      const h=g.y1-g.y0, my=g.y0+h/2, bx=R+R*0.025;
+      s+=`<line x1="${bx}" x2="${bx}" y1="${g.y0+R/200}" y2="${g.y1-R/200}" stroke="#d2483a" stroke-width="${R/300}"/>`;
+      s+=`<line x1="${bx-R*0.012}" x2="${bx+R*0.012}" y1="${g.y0+R/200}" y2="${g.y0+R/200}" stroke="#d2483a" stroke-width="${R/300}"/>`;
+      s+=`<line x1="${bx-R*0.012}" x2="${bx+R*0.012}" y1="${g.y1-R/200}" y2="${g.y1-R/200}" stroke="#d2483a" stroke-width="${R/300}"/>`;
+      if(my-lastY>fsS*2.2&&h>fsS*0.9){
+        s+=`<text x="${bx+R*0.03}" y="${my-fsS*0.15}" font-size="${fsS}" font-weight="700" fill="#d2483a">폭 ${fmtU(g.free)}</text>`;
+        s+=`<text x="${bx+R*0.03}" y="${my+fsS*0.95}" font-size="${fsS*0.78}" fill="#a2463b">길이 ${fmtU(h)}</text>`;
+        lastY=my;
+      }
+    });
+    return s+'</svg>';
+  }
+
+  // 조각 안에 번호·이름·크기 표시. 좁고 긴 조각은 글자를 세로로 세워서 넣는다.
+  function textUnits(t){let n=0;for(const ch of t)n+=/[ㄱ-힝]/.test(ch)?0.95:(/[ .,()×/#]/.test(ch)?0.35:0.6);return n}
+  function pieceLabel(p,R){
+    const it=p.it;
+    const l1=`${p.no} ${it.name}${it.split?` (${it.split.i+1}/${it.split.n})`:''}${p.rot?' ↻':''}`;
+    const l2=`${fmtU(p.w)}×${fmtU(p.h)}`;
+    const maxFs=R/20,minFs=R/95,pad=0.88;
+    let best=null;
+    const tryOpt=(vertical,lines,fs)=>{if(fs>=minFs&&(!best||fs>best.fs*1.05||(fs>=best.fs*0.9&&lines.length>best.lines.length)))best={vertical,lines,fs}};
+    [false,true].forEach(vertical=>{
+      const along=(vertical?p.h:p.w)*pad,across=(vertical?p.w:p.h)*pad;
+      // 두 줄: 번호+이름 / 크기
+      tryOpt(vertical,[l1,l2],Math.min(maxFs,across/2.5,along/Math.max(textUnits(l1),textUnits(l2)*0.75)));
+      // 한 줄: 번호+이름
+      tryOpt(vertical,[l1],Math.min(maxFs,across/1.25,along/textUnits(l1)));
+    });
+    const cx=p.x+p.w/2,cy=p.y+p.h/2;
+    if(!best){ // 너무 작으면 번호만
+      const fs=Math.max(R/110,Math.min(p.w,p.h)*0.6);
+      return `<text x="${cx}" y="${cy+fs*0.35}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#1e2124">${p.no}</text>`;
+    }
+    const {vertical,lines,fs}=best;
+    const tr=vertical?` transform="rotate(-90 ${cx} ${cy})"`:'';
+    let s=`<g${tr}>`;
+    if(lines.length===2){
+      s+=`<text x="${cx}" y="${cy-fs*0.15}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#1e2124">${esc(lines[0])}</text>`;
+      s+=`<text x="${cx}" y="${cy+fs*0.95}" font-size="${fs*0.75}" text-anchor="middle" fill="#3b3f44">${esc(lines[1])}</text>`;
+    }else s+=`<text x="${cx}" y="${cy+fs*0.35}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#1e2124">${esc(lines[0])}</text>`;
+    return s+'</g>';
+  }
+
+  let lastText='';
+  function compute(){
+    if(!cur)return;
+    const S=cur.settings,out=$('result');
+    if(!(S.roll>0)){out.innerHTML='<div class="empty">롤 폭을 입력하세요</div>';return}
+    const {items,warns}=expand(cur.pieces,S);
+    if(!items.length){out.innerHTML='<div class="empty">부재의 가로·세로를 입력하면 여기에 배치표가 나옵니다</div>';lastText='';cur.summary=null;save();return}
+    const groups={};items.forEach(it=>(groups[it.film]=groups[it.film]||[]).push(it));
+    let html='';const txt=[];const u=U();
+    txt.push(`■ ${cur.name||'현장'}${cur.date?' ('+cur.date+')':''}`);
+    if(warns.length)html+=`<div class="warns">${warns.map(w=>`<div>⚠ ${esc(w)}</div>`).join('')}</div>`;
+    let totalLen=0;const blocks=[];
+    Object.keys(groups).forEach(film=>{
+      const pool=buildPool(groups[film],S);
+      const res=pick(pool,db.mode),alt=pick(pool,db.mode==='film'?'work':'film');
+      if(!res){blocks.push(`<div class="film-block"><div class="film-title">${esc(film)}</div><div class="warns">배치할 수 없어요. 설정값을 확인하세요.</div></div>`);return}
+      res.placed.sort((a,b)=>a.y-b.y||a.x-b.x).forEach((p,i)=>p.no=i+1);
+      totalLen+=res.len;
+      const scraps=rightScraps(res.placed,S.roll,res.len);
+      const areaPieces=res.placed.reduce((s,p)=>s+p.w*p.h,0);
+      const eff=areaPieces/(S.roll*res.len)*100;
+      const lenM=res.len/1000;
+      let b=`<div class="film-block"><div class="film-title">필름: ${esc(film)}</div><div class="stats">
+        <div class="stat"><b>${lenM.toFixed(2)} m</b><span>필요 길이</span></div>
+        <div class="stat"><b>${eff.toFixed(0)}%</b><span>사용 효율 (여유분 포함)</span></div>
+        <div class="stat"><b>${res.placed.length}장</b><span>재단 조각</span></div>
+        <div class="stat"><b>${res.work.n}회</b><span>칼질 횟수</span></div>
+        <div class="stat"><b>${(res.work.len/1000).toFixed(1)} m</b><span>칼질 총 길이</span></div>
+        ${S.price>0?`<div class="stat"><b>${fmt(lenM*S.price)}원</b><span>필름 비용</span></div>`:''}
+      </div>`;
+      // 다른 모드와 비교
+      if(alt){
+        const dL=(alt.len-res.len)/1000,dN=alt.work.n-res.work.n,dC=(alt.work.len-res.work.len)/1000;
+        const other=db.mode==='film'?'칼질 최소':'필름 절약';
+        const sg=(v,d)=>(v>0?'+':v<0?'−':'±')+Math.abs(v).toFixed(d);
+        b+= (Math.abs(dL)<0.005&&dN===0)
+          ? `<div class="cmp">두 모드의 결과가 같아요.</div>`
+          : `<div class="cmp">'${other}'로 바꾸면: 필름 <b>${sg(dL,2)}m</b>, 칼질 <b>${sg(dN,0)}회</b> (총 길이 ${sg(dC,1)}m)</div>`;
+      }
+      if(S.rollLen>0&&lenM>S.rollLen)b+=`<div class="warns">⚠ 필요 길이가 롤 한 개(${S.rollLen}m)를 넘어요</div>`;
+      b+=`<div class="layout-wrap"><div class="svgbox">${svgFor(res,S,scraps)}</div><div>
+        <div class="scroll-x"><table class="cut">
+        <thead><tr><th>#</th><th>부재</th><th>실측</th><th>재단</th><th>위치 (왼쪽, 시작)</th></tr></thead><tbody>`;
+      txt.push(`[필름: ${film}] ${db.mode==='film'?'필름 절약':'칼질 최소'} 배치 / 롤폭 ${fmtUu(S.roll)} / 필요 길이 ${lenM.toFixed(2)}m / 효율 ${eff.toFixed(0)}% / 칼질 ${res.work.n}회`);
+      res.placed.forEach(p=>{
+        const it=p.it,nm=it.name+(it.copy?` #${it.copy}`:'')+(it.split?` (${it.split.i+1}/${it.split.n} ${it.split.axis} 이음)`:'');
+        b+=`<tr><td><span class="idx" style="background:${COLORS[it.pi%COLORS.length]}">${p.no}</span></td>
+          <td>${esc(nm)}</td><td>${fmtU(it.real[0])}×${fmtU(it.real[1])}</td>
+          <td>${fmtU(p.w)}×${fmtU(p.h)}${p.rot?' <span class="rot">↻회전</span>':''}</td>
+          <td>${fmtU(p.x)}, ${fmtU(p.y)}</td></tr>`;
+        txt.push(` ${p.no}. ${nm} | 실측 ${fmtU(it.real[0])}×${fmtU(it.real[1])}${u} → 재단 ${fmtU(p.w)}×${fmtU(p.h)}${u}${p.rot?' (회전)':''} | 위치 ${fmtU(p.x)}, ${fmtU(p.y)}${u}`);
+      });
+      b+=`</tbody></table></div>`;
+      // scrap table
+      b+=`<div class="sub-h">오른쪽 자투리 (구간별 남는 폭)</div>`;
+      if(scraps.length){
+        b+=`<div class="scroll-x"><table class="cut"><thead><tr><th>구간 (롤 시작부터)</th><th>길이</th><th>남는 폭</th></tr></thead><tbody>`;
+        txt.push(` - 오른쪽 자투리`);
+        scraps.forEach(g=>{
+          b+=`<tr><td>${fmtU(g.y0)} ~ ${fmtU(g.y1)}</td><td>${fmtU(g.y1-g.y0)}</td><td class="scrap-w">${fmtU(g.free)}</td></tr>`;
+          txt.push(`   ${fmtU(g.y0)}~${fmtU(g.y1)}${u}: 폭 ${fmtU(g.free)}${u} × 길이 ${fmtU(g.y1-g.y0)}${u}`);
+        });
+        b+=`</tbody></table></div>`;
+      }else b+=`<div class="hint" style="margin-top:0">롤 폭을 끝까지 다 써서 오른쪽 자투리가 없어요.</div>`;
+      b+=`<div class="hint">단위 ${u}. 재단 크기는 롤 폭 방향 × 길이 방향입니다. 위치는 롤 왼쪽 끝과 롤 시작점에서 잰 거리이고, 점선은 실측 크기입니다. 빗금 친 부분이 오른쪽 자투리입니다.</div></div></div></div>`;
+      txt.push('');blocks.push(b);
+    });
+    if(Object.keys(groups).length>1)
+      html+=`<div class="stats"><div class="stat"><b>${(totalLen/1000).toFixed(2)} m</b><span>전체 필요 길이</span></div>${S.price>0?`<div class="stat"><b>${fmt(totalLen/1000*S.price)}원</b><span>전체 필름 비용</span></div>`:''}</div>`;
+    html+=blocks.join('');
+    out.innerHTML=html;
+    lastText=txt[0]+'\n'+(warns.length?warns.map(w=>'⚠ '+w).join('\n')+'\n':'')+txt.slice(1).join('\n');
+    cur.summary={lenM:totalLen/1000};save();
+  }
+  let timer;function schedule(){clearTimeout(timer);timer=setTimeout(compute,220)}
+  $('copy').addEventListener('click',async()=>{
+    if(!lastText){toast('복사할 결과가 없어요');return}
+    try{await navigator.clipboard.writeText(lastText);toast('복사했어요')}
+    catch(e){
+      const ta=document.createElement('textarea');ta.value=lastText;document.body.appendChild(ta);ta.select();
+      try{document.execCommand('copy');toast('복사했어요')}catch(_){toast('복사가 막혀 있어요')}ta.remove();
+    }
+  });
+
+  // ---------- start ----------
+  paintUnit();paintMode();route();
+  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+    window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  }
+})();
+</script>
+</body>
+</html>
