@@ -46,11 +46,25 @@
   .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
   a{color:var(--accent)}
   table{width:100%;border-collapse:collapse}
-  .pieces th{font-size:12px;color:var(--sub);font-weight:500;text-align:left;padding:4px 4px}
-  .pieces td{padding:3px 3px}
-  .pieces td input{padding:7px 6px}
-  .pieces .num{width:76px}.pieces .qty{width:54px}.pieces .film{width:70px}
-  .pieces .del{border:none;background:none;color:var(--sub);font-size:18px;padding:4px 6px}
+  /* 부재 입력 줄: PC는 한 줄, 휴대폰은 두 줄 */
+  .prow{display:grid;grid-template-columns:minmax(140px,1fr) 84px 84px 60px 90px 34px;
+    grid-template-areas:"name w h qty film del";gap:6px;align-items:end;margin-bottom:6px}
+  .phead{font-size:12px;color:var(--sub);margin-bottom:4px;align-items:center}
+  .phead span:first-child{padding-left:30px}
+  .prow .nm{grid-area:name;display:flex;align-items:center;gap:6px;min-width:0}
+  .prow .nm input{flex:1;min-width:0}
+  .prow .pw{grid-area:w}.prow .ph{grid-area:h}.prow .pq{grid-area:qty}.prow .pf{grid-area:film}
+  .prow .del{grid-area:del;border:none;background:none;color:var(--sub);font-size:20px;padding:6px 4px;align-self:center}
+  .prow label{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .prow label span{display:none;font-size:11px;color:var(--sub)}
+  .prow input{padding:7px 7px}
+  @media (max-width:640px){
+    .phead{display:none}
+    .prow{grid-template-columns:1fr 1fr 0.7fr 1fr 34px;
+      grid-template-areas:"name name name name del" "w h qty film film";
+      padding:10px 0;margin:0;border-bottom:1px solid #eeece7}
+    .prow label span{display:block}
+  }
   .idx{display:inline-block;min-width:22px;height:22px;border-radius:6px;text-align:center;font-size:12px;line-height:22px;font-weight:600;color:#1e2124;padding:0 3px}
   .quick{display:none;margin-top:10px}
   .quick.on{display:block}
@@ -152,12 +166,8 @@
 
     <div class="card">
       <h2>부재 목록 <span class="muted" style="font-size:12px;font-weight:400">단위 <span class="u"></span></span></h2>
-      <div class="scroll-x">
-      <table class="pieces">
-        <thead><tr><th></th><th>이름</th><th>가로</th><th>세로</th><th>수량</th><th>필름</th><th></th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-      </div>
+      <div class="prow phead"><span>이름</span><span>가로</span><span>세로</span><span>수량</span><span>필름</span><span></span></div>
+      <div id="rows"></div>
       <div class="btns">
         <button class="pri" id="add">+ 부재 추가</button>
         <button id="toggle-quick">빠른 입력</button>
@@ -347,17 +357,17 @@
   // piece rows
   function renderRows(){
     const tb=$('rows');tb.innerHTML='';
-    if(!cur.pieces.length){tb.innerHTML='<tr><td colspan="7" class="empty">부재를 추가하세요</td></tr>';return}
+    if(!cur.pieces.length){tb.innerHTML='<div class="empty">부재를 추가하세요</div>';return}
     const step=U()==='cm'?'0.1':'1';
     cur.pieces.forEach((p,i)=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td><span class="idx" style="background:${COLORS[i%COLORS.length]}">${i+1}</span></td>
-        <td><input data-k="name" value="${esc(p.name)}" placeholder="부재 ${i+1}"></td>
-        <td><input class="num" data-k="w" type="number" inputmode="decimal" step="${step}" value="${p.w?toU(p.w):''}"></td>
-        <td><input class="num" data-k="h" type="number" inputmode="decimal" step="${step}" value="${p.h?toU(p.h):''}"></td>
-        <td><input class="qty" data-k="qty" type="number" inputmode="numeric" value="${p.qty||1}"></td>
-        <td><input class="film" data-k="film" value="${esc(p.film)}" placeholder="기본"></td>
-        <td><button class="del" title="삭제">×</button></td>`;
+      const tr=document.createElement('div');tr.className='prow';
+      tr.innerHTML=`<div class="nm"><span class="idx" style="background:${COLORS[i%COLORS.length]}">${i+1}</span>
+          <input data-k="name" value="${esc(p.name)}" placeholder="부재 이름 (예: 방문)"></div>
+        <label class="pw"><span>가로</span><input data-k="w" type="number" inputmode="decimal" step="${step}" value="${p.w?toU(p.w):''}"></label>
+        <label class="ph"><span>세로</span><input data-k="h" type="number" inputmode="decimal" step="${step}" value="${p.h?toU(p.h):''}"></label>
+        <label class="pq"><span>수량</span><input data-k="qty" type="number" inputmode="numeric" value="${p.qty||1}"></label>
+        <label class="pf"><span>필름</span><input data-k="film" value="${esc(p.film)}" placeholder="기본"></label>
+        <button class="del" title="삭제">×</button>`;
       tr.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{
         const k=inp.dataset.k,v=inp.value;
         if(k==='name'||k==='film') p[k]=v;
@@ -371,7 +381,7 @@
   }
   $('add').addEventListener('click',()=>{
     cur.pieces.push({name:'',w:0,h:0,qty:1,film:''});touch();renderRows();
-    const ins=$('rows').querySelectorAll('tr:last-child input');if(ins[1])ins[1].focus();
+    const ins=$('rows').querySelectorAll('.prow:last-child input');if(ins[0])ins[0].focus();
   });
   $('toggle-quick').addEventListener('click',()=>$('quick').classList.toggle('on'));
   $('quick-add').addEventListener('click',()=>{
@@ -517,13 +527,7 @@
         const rw=p.rot?p.it.real[1]:p.it.real[0],rh=p.rot?p.it.real[0]:p.it.real[1];
         s+=`<rect x="${p.x+m}" y="${p.y+m}" width="${rw}" height="${rh}" fill="none" stroke="#3b3f44" stroke-opacity=".45" stroke-dasharray="${R/80} ${R/120}" stroke-width="${R/600}"/>`;
       }
-      const fs=Math.max(R/70,Math.min(R/20,p.w/6.5,p.h/3.2));
-      const cx=p.x+p.w/2,cy=p.y+p.h/2;
-      const t1=`${p.no}${p.it.split?` (${p.it.split.i+1}/${p.it.split.n})`:''}${p.rot?' ↻':''}`;
-      if(p.h>fs*2.6){
-        s+=`<text x="${cx}" y="${cy-fs*0.15}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#1e2124">${esc(t1)}</text>`;
-        s+=`<text x="${cx}" y="${cy+fs*0.95}" font-size="${fs*0.72}" text-anchor="middle" fill="#3b3f44">${fmtU(p.w)}×${fmtU(p.h)}</text>`;
-      }else s+=`<text x="${cx}" y="${cy+fs*0.35}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#1e2124">${esc(t1)}</text>`;
+      s+=pieceLabel(p,R);
     });
     // scrap labels on the right side, outside the roll
     const fsS=fsR*0.82;let lastY=-1e9;
@@ -539,6 +543,37 @@
       }
     });
     return s+'</svg>';
+  }
+
+  // 조각 안에 번호·이름·크기 표시. 좁고 긴 조각은 글자를 세로로 세워서 넣는다.
+  function textUnits(t){let n=0;for(const ch of t)n+=/[ㄱ-힝]/.test(ch)?0.95:(/[ .,()×/#]/.test(ch)?0.35:0.6);return n}
+  function pieceLabel(p,R){
+    const it=p.it;
+    const l1=`${p.no} ${it.name}${it.split?` (${it.split.i+1}/${it.split.n})`:''}${p.rot?' ↻':''}`;
+    const l2=`${fmtU(p.w)}×${fmtU(p.h)}`;
+    const maxFs=R/20,minFs=R/95,pad=0.88;
+    let best=null;
+    const tryOpt=(vertical,lines,fs)=>{if(fs>=minFs&&(!best||fs>best.fs*1.05||(fs>=best.fs*0.9&&lines.length>best.lines.length)))best={vertical,lines,fs}};
+    [false,true].forEach(vertical=>{
+      const along=(vertical?p.h:p.w)*pad,across=(vertical?p.w:p.h)*pad;
+      // 두 줄: 번호+이름 / 크기
+      tryOpt(vertical,[l1,l2],Math.min(maxFs,across/2.5,along/Math.max(textUnits(l1),textUnits(l2)*0.75)));
+      // 한 줄: 번호+이름
+      tryOpt(vertical,[l1],Math.min(maxFs,across/1.25,along/textUnits(l1)));
+    });
+    const cx=p.x+p.w/2,cy=p.y+p.h/2;
+    if(!best){ // 너무 작으면 번호만
+      const fs=Math.max(R/110,Math.min(p.w,p.h)*0.6);
+      return `<text x="${cx}" y="${cy+fs*0.35}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#1e2124">${p.no}</text>`;
+    }
+    const {vertical,lines,fs}=best;
+    const tr=vertical?` transform="rotate(-90 ${cx} ${cy})"`:'';
+    let s=`<g${tr}>`;
+    if(lines.length===2){
+      s+=`<text x="${cx}" y="${cy-fs*0.15}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#1e2124">${esc(lines[0])}</text>`;
+      s+=`<text x="${cx}" y="${cy+fs*0.95}" font-size="${fs*0.75}" text-anchor="middle" fill="#3b3f44">${esc(lines[1])}</text>`;
+    }else s+=`<text x="${cx}" y="${cy+fs*0.35}" font-size="${fs}" font-weight="700" text-anchor="middle" fill="#1e2124">${esc(lines[0])}</text>`;
+    return s+'</g>';
   }
 
   let lastText='';
