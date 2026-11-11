@@ -104,6 +104,9 @@
   .st{font-size:12px;border-radius:999px;padding:2px 9px;flex:none;font-weight:600}
   .st-0{background:#eceae5;color:#55595e}.st-1{background:#e3ecf8;color:#2e5c95}.st-2{background:#fbf0d6;color:#8a6410}.st-3{background:var(--accent-weak);color:var(--accent)}
   .inline-link{font-size:12px;margin-left:6px;white-space:nowrap}
+  .frow{display:grid;grid-template-columns:minmax(80px,1fr) 110px 130px;gap:8px;align-items:center;margin-bottom:6px}
+  .fhead{font-size:12px;color:var(--sub);margin-bottom:4px}
+  .frow .fn{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .modebar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:-2px 0 12px}
   .modebar .hint{margin:0;flex:1;min-width:200px}
   .cmp{background:#f4f2ec;border-radius:8px;padding:8px 10px;font-size:13px;margin:-4px 0 12px}
@@ -156,12 +159,10 @@
     <div class="card">
       <h2>설정</h2>
       <div class="grid">
-        <label class="f"><span>롤 폭 (<span class="u"></span>)</span><input id="s-roll" type="number" inputmode="decimal"></label>
         <label class="f"><span>여유분, 한쪽 (<span class="u"></span>)</span><input id="s-margin" type="number" inputmode="decimal"></label>
         <label class="f"><span>조각 사이 간격 (<span class="u"></span>)</span><input id="s-gap" type="number" inputmode="decimal"></label>
         <label class="f"><span>이음 겹침 (<span class="u"></span>)</span><input id="s-overlap" type="number" inputmode="decimal"></label>
         <label class="f">롤 길이 (m)<input id="s-rolllen" type="number" inputmode="decimal"></label>
-        <label class="f">필름 단가 (원/m, 선택)<input id="s-price" type="number" inputmode="numeric"></label>
       </div>
       <label class="chk"><input id="s-rotate" type="checkbox"> 90° 회전 허용</label>
       <div class="hint">나뭇결이나 패턴처럼 방향이 있는 필름이면 회전을 끄세요. 끄면 조각의 <b>세로</b>가 항상 롤 길이 방향으로 놓입니다. 여유분은 사방에 더해지고, 롤 폭보다 큰 조각는 자동으로 나눈 뒤 이음 겹침만큼 더 잘라냅니다. 이 설정은 다음에 만드는 새 현장의 기본값이 됩니다.</div>
@@ -181,6 +182,13 @@
         <textarea id="quick-text"></textarea>
         <div class="btns"><button class="pri" id="quick-add">목록에 추가</button><span class="hint" style="margin:auto 0">현재 단위(<span class="u"></span>)로 읽습니다. 필름을 안 적으면 '기본'으로 묶이고, 필름이 다르면 롤을 따로 계산합니다.</span></div>
       </div>
+    </div>
+
+    <div class="card" id="film-card">
+      <h2>필름별 폭·단가</h2>
+      <div class="frow fhead"><span>필름</span><span>롤 폭 (<span class="u"></span>)</span><span>단가 (원/m)</span></div>
+      <div id="film-rows"></div>
+      <div class="hint">조각 목록의 '필름' 칸에 적은 이름별로 나와요. 롤 폭은 비워 두면 122cm로 계산해요. 롤 양옆이 더럽거나 구겨져서 쓸 수 있는 폭이 줄었을 때만 바꾸세요. 단가는 필름 이름별로 기억해서 다음 현장에도 자동으로 들어가요.</div>
     </div>
 
     <div class="card">
@@ -219,6 +227,7 @@
   db.defaults=Object.assign(clone(DEF_SET),db.defaults||{});
   if(db.unit!=='mm') db.unit='cm';
   if(!['film','work','min'].includes(db.mode)) db.mode='film';
+  if(!db.filmPrices||typeof db.filmPrices!=='object') db.filmPrices={};
   function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){toast('저장 공간이 부족해요')}}
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 
@@ -239,7 +248,7 @@
   }
   document.querySelectorAll('#unit-seg button').forEach(b=>b.addEventListener('click',()=>{
     db.unit=b.dataset.u;save();paintUnit();
-    if(cur){fillSettings();renderRows();compute()} else renderList();
+    if(cur){fillSettings();renderRows();renderFilms(true);compute()} else renderList();
   }));
 
   const MODE_HINT={film:'필름이 가장 적게 드는 배치예요. 작은 조각이 사이사이 끼어 들어가서 칼질이 복잡할 수 있어요.',
@@ -295,14 +304,14 @@
       const sm=s.summary;
       b.innerHTML=`<div class="row1"><span class="nm">${esc(s.name||'이름 없는 현장')}</span><span class="st st-${s.status}">${STATUS[s.status]}</span></div>
         <div class="meta">${esc(s.date||'')}${s.address?' · '+esc(s.address):''}</div>
-        <div class="meta">조각 ${s.pieces.length}종류${sm&&sm.lenM?` · 필름 ${sm.lenM.toFixed(2)}m`:''}${s.memo?' · '+esc(s.memo.split('\n')[0].slice(0,30)):''}</div>`;
+        <div class="meta">조각 ${s.pieces.length}종류${sm&&sm.lenM?` · 필름 ${sm.lenM.toFixed(2)}m (청구 ${sm.billM||Math.ceil(sm.lenM)}m)`:''}${sm&&sm.cost?` · ${fmt(sm.cost)}원`:''}${s.memo?' · '+esc(s.memo.split('\n')[0].slice(0,30)):''}</div>`;
       b.addEventListener('click',()=>{location.hash='site-'+s.id});
       el.appendChild(b);
     });
   }
   $('q').addEventListener('input',renderList);
   $('new-site').addEventListener('click',()=>{
-    const s={id:uid(),name:'',date:today(),address:'',contact:'',memo:'',status:0,settings:clone(db.defaults),pieces:[],created:Date.now(),updated:Date.now()};
+    const s={id:uid(),name:'',date:today(),address:'',contact:'',memo:'',status:0,settings:Object.assign(clone(db.defaults),{roll:DEF_SET.roll}),films:{},pieces:[],created:Date.now(),updated:Date.now()};
     db.sites.push(s);save();location.hash='site-'+s.id;
     setTimeout(()=>$('i-name').focus(),50);
   });
@@ -355,12 +364,12 @@
     Object.entries(INFO).forEach(([k,id])=>$(id).value=cur[k]||'');
     sel.value=cur.status||0;paintLinks();
     $('quick').classList.remove('on');
-    fillSettings();renderRows();compute();
+    filmKey='';fillSettings();renderRows();compute();
   }
 
   // settings
-  const S_LEN={roll:'s-roll',margin:'s-margin',gap:'s-gap',overlap:'s-overlap'};
-  const S_RAW={rollLen:'s-rolllen',price:'s-price'};
+  const S_LEN={margin:'s-margin',gap:'s-gap',overlap:'s-overlap'};
+  const S_RAW={rollLen:'s-rolllen'};
   function fillSettings(){
     const S=cur.settings;
     Object.entries(S_LEN).forEach(([k,id])=>{$(id).value=toU(S[k]);$(id).step=U()==='cm'?'0.1':'1'});
@@ -373,8 +382,41 @@
   $('s-rotate').addEventListener('change',e=>{cur.settings.rotate=e.target.checked;settingsChanged()});
 
   // piece rows
+  const BASE_ROLL=()=>cur.settings.roll>0?cur.settings.roll:DEF_SET.roll;
+  const filmName=p=>(p.film||'').trim()||'기본';
+  function filmCfg(name){
+    if(!cur.films||typeof cur.films!=='object')cur.films={};
+    const f=cur.films[name]||{};
+    let price=f.price;
+    if(price==null) price=db.filmPrices[name];
+    if(price==null) price=cur.settings.price||0;
+    return {roll:f.roll>0?f.roll:BASE_ROLL(),price:+price||0,customRoll:f.roll>0};
+  }
+  let filmKey='';
+  function renderFilms(force){
+    const names=[...new Set(cur.pieces.map(filmName))];
+    const key=names.join('|')+'/'+U();
+    if(!force&&key===filmKey)return; filmKey=key;
+    const box=$('film-rows');
+    $('film-card').style.display=names.length?'':'none';
+    box.innerHTML='';
+    const step=U()==='cm'?'0.1':'1';
+    names.forEach(name=>{
+      const c=filmCfg(name),f=(cur.films[name]||{});
+      const row=document.createElement('div');row.className='frow';
+      const pv=f.price!=null?f.price:(db.filmPrices[name]!=null?db.filmPrices[name]:(cur.settings.price||''));
+      row.innerHTML=`<span class="fn">${esc(name)}</span>
+        <input type="number" inputmode="decimal" step="${step}" placeholder="${toU(BASE_ROLL())}" value="${c.customRoll?toU(f.roll):''}">
+        <input type="number" inputmode="numeric" placeholder="0" value="${pv===''?'':pv}">`;
+      const [ri,pi]=row.querySelectorAll('input');
+      ri.addEventListener('input',()=>{cur.films[name]=Object.assign({},cur.films[name],{roll:ri.value===''?0:fromU(parseFloat(ri.value)||0)});touch();schedule()});
+      pi.addEventListener('input',()=>{const v=pi.value===''?null:Math.max(0,parseFloat(pi.value)||0);
+        cur.films[name]=Object.assign({},cur.films[name],{price:v});if(v!=null)db.filmPrices[name]=v;touch();schedule()});
+      box.appendChild(row);
+    });
+  }
   function renderRows(){
-    const tb=$('rows');tb.innerHTML='';
+    renderFilms();const tb=$('rows');tb.innerHTML='';
     if(!cur.pieces.length){tb.innerHTML='<div class="empty">조각을 추가하세요</div>';return}
     const step=U()==='cm'?'0.1':'1';
     cur.pieces.forEach((p,i)=>{
@@ -388,7 +430,7 @@
         <button class="del" title="삭제">×</button>`;
       tr.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{
         const k=inp.dataset.k,v=inp.value;
-        if(k==='name'||k==='film') p[k]=v;
+        if(k==='name'||k==='film'){p[k]=v;if(k==='film')renderFilms()}
         else if(k==='qty') p.qty=parseInt(v)||0;
         else p[k]=fromU(parseFloat(v)||0);
         touch();schedule();
@@ -435,13 +477,14 @@
   });
 
   // ---------- expand pieces (margins, splitting) — 모두 mm ----------
-  function expand(pieces,S){
+  function expand(pieces,S,onlyFilm){
     const R=S.roll,m=S.margin,ov=S.overlap;const items=[],warns=[];
     pieces.forEach((p,pi)=>{
       const w=+p.w,h=+p.h,q=Math.max(1,Math.floor(+p.qty||1));
       if(!(w>0&&h>0))return;
       const W=w+2*m,H=h+2*m;const nm=(p.name||'').trim()||('조각 '+(pi+1));
       const film=(p.film||'').trim()||'기본';
+      if(onlyFilm!=null&&film!==onlyFilm)return;
       if(W<=R||(S.rotate&&H<=R)){
         for(let k=0;k<q;k++) items.push({w:W,h:H,pi,film,name:nm,copy:q>1?k+1:0,real:[w,h],split:null});
         return;
@@ -705,32 +748,40 @@
   function compute(){
     if(!cur)return;
     const S=cur.settings,out=$('result');
-    if(!(S.roll>0)){out.innerHTML='<div class="empty">롤 폭을 입력하세요</div>';return}
-    const {items,warns}=expand(cur.pieces,S);
-    if(!items.length){out.innerHTML='<div class="empty">조각의 가로·세로를 입력하면 여기에 배치표가 나옵니다</div>';lastText='';cur.summary=null;save();return}
-    const groups={};items.forEach(it=>(groups[it.film]=groups[it.film]||[]).push(it));
+    const groups={},GS={},warns=[];
+    [...new Set(cur.pieces.map(filmName))].forEach(name=>{
+      const c=filmCfg(name);const S2=Object.assign({},S,{roll:c.roll,price:c.price});
+      const e=expand(cur.pieces,S2,name);
+      if(e.items.length){groups[name]=e.items;GS[name]=S2}
+      e.warns.forEach(w=>warns.push(w));
+    });
+    if(!Object.keys(groups).length){out.innerHTML='<div class="empty">조각의 가로·세로를 입력하면 여기에 배치표가 나옵니다</div>';lastText='';cur.summary=null;save();return}
     let html='';const txt=[];const u=U();
     txt.push(`■ ${cur.name||'현장'}${cur.date?' ('+cur.date+')':''}`);
     if(warns.length)html+=`<div class="warns">${warns.map(w=>`<div>⚠ ${esc(w)}</div>`).join('')}</div>`;
-    let totalLen=0;const blocks=[];
+    let totalLen=0,totalBill=0,totalCost=0;const blocks=[];
     Object.keys(groups).forEach(film=>{
+      const S=GS[film];
       const pool=buildPool(groups[film],S);
       const res=pick(pool,db.mode);
       const alts=['film','work','min'].filter(m=>m!==db.mode).map(m=>[m,pick(pool,m)]);
       if(!res){blocks.push(`<div class="film-block"><div class="film-title">${esc(film)}</div><div class="warns">배치할 수 없어요. 설정값을 확인하세요.</div></div>`);return}
       res.placed.sort((a,b)=>a.y-b.y||a.x-b.x).forEach((p,i)=>p.no=i+1);
       totalLen+=res.len;
+      const billM=Math.ceil(res.len/1000-1e-9),cost=billM*S.price;
+      totalBill+=billM;totalCost+=cost;
       const scraps=rightScraps(res.placed,S.roll,res.len);
       const areaPieces=res.placed.reduce((s,p)=>s+p.w*p.h,0);
       const eff=areaPieces/(S.roll*res.len)*100;
       const lenM=res.len/1000;
-      let b=`<div class="film-block"><div class="film-title">필름: ${esc(film)}</div><div class="stats">
-        <div class="stat"><b>${lenM.toFixed(2)} m</b><span>필요 길이</span></div>
+      let b=`<div class="film-block"><div class="film-title">필름: ${esc(film)} <span class="muted" style="font-size:13px;font-weight:400">롤 폭 ${fmtUu(S.roll)}</span></div><div class="stats">
+        <div class="stat"><b>${lenM.toFixed(2)} m</b><span>실제 소모량</span></div>
+        <div class="stat"><b>${billM} m</b><span>청구 길이 (1m 단위 올림)</span></div>
+        ${S.price>0?`<div class="stat"><b>${fmt(cost)}원</b><span>필름 비용 (${billM}m × ${fmt(S.price)}원)</span></div>`:''}
         <div class="stat"><b>${eff.toFixed(0)}%</b><span>사용 효율 (여유분 포함)</span></div>
         <div class="stat"><b>${res.placed.length}장</b><span>재단 조각</span></div>
         <div class="stat"><b>${res.work.n}회</b><span>칼질 횟수</span></div>
         <div class="stat"><b>${(res.work.len/1000).toFixed(1)} m</b><span>칼질 총 길이</span></div>
-        ${S.price>0?`<div class="stat"><b>${fmt(lenM*S.price)}원</b><span>필름 비용</span></div>`:''}
       </div>`;
       // 다른 모드와 비교
       {
@@ -742,11 +793,11 @@
         });
         b+=`<div class="cmp">${lines.join('<br>')}</div>`;
       }
-      if(S.rollLen>0&&lenM>S.rollLen)b+=`<div class="warns">⚠ 필요 길이가 롤 한 개(${S.rollLen}m)를 넘어요</div>`;
+      if(S.rollLen>0&&lenM>S.rollLen)b+=`<div class="warns">⚠ 실제 소모량이 롤 한 개(${S.rollLen}m)를 넘어요</div>`;
       b+=`<div class="layout-wrap"><div class="svgbox">${svgFor(res,S,scraps)}</div><div>
         <div class="scroll-x"><table class="cut">
         <thead><tr><th>#</th><th>조각</th><th>실측</th><th>재단</th><th>위치 (왼쪽, 시작)</th></tr></thead><tbody>`;
-      txt.push(`[필름: ${film}] ${MODE_NAME[db.mode]} 배치 / 롤폭 ${fmtUu(S.roll)} / 필요 길이 ${lenM.toFixed(2)}m / 효율 ${eff.toFixed(0)}% / 칼질 ${res.work.n}회`);
+      txt.push(`[필름: ${film}] ${MODE_NAME[db.mode]} 배치 / 롤폭 ${fmtUu(S.roll)} / 실제 소모량 ${lenM.toFixed(2)}m / 청구 ${billM}m${S.price>0?` (${fmt(cost)}원)`:''} / 효율 ${eff.toFixed(0)}% / 칼질 ${res.work.n}회`);
       res.placed.forEach(p=>{
         const it=p.it,nm=it.name+(it.copy?` #${it.copy}`:'')+(it.split?` (${it.split.i+1}/${it.split.n} ${it.split.axis} 이음)`:'');
         b+=`<tr><td><span class="idx" style="background:${COLORS[it.pi%COLORS.length]}">${p.no}</span></td>
@@ -770,12 +821,17 @@
       b+=`<div class="hint">단위 ${u}. 재단 크기는 롤 폭 방향 × 길이 방향입니다. 위치는 롤 왼쪽 끝과 롤 시작점에서 잰 거리이고, 점선은 실측 크기입니다. 빗금 친 부분이 오른쪽 자투리입니다.</div></div></div></div>`;
       txt.push('');blocks.push(b);
     });
-    if(Object.keys(groups).length>1)
-      html+=`<div class="stats"><div class="stat"><b>${(totalLen/1000).toFixed(2)} m</b><span>전체 필요 길이</span></div>${S.price>0?`<div class="stat"><b>${fmt(totalLen/1000*S.price)}원</b><span>전체 필름 비용</span></div>`:''}</div>`;
+    if(Object.keys(groups).length>1){
+      html+=`<div class="film-title">전체 합계 (필름 ${Object.keys(groups).length}종류)</div><div class="stats">
+        <div class="stat"><b>${(totalLen/1000).toFixed(2)} m</b><span>실제 소모량 합계</span></div>
+        <div class="stat"><b>${totalBill} m</b><span>청구 길이 합계</span></div>
+        ${totalCost>0?`<div class="stat"><b>${fmt(totalCost)}원</b><span>필름 비용 합계</span></div>`:''}</div>`;
+      txt.push(`[전체] 실제 소모량 ${(totalLen/1000).toFixed(2)}m / 청구 ${totalBill}m${totalCost>0?` / 비용 ${fmt(totalCost)}원`:''}`,'');
+    }
     html+=blocks.join('');
     out.innerHTML=html;
     lastText=txt[0]+'\n'+(warns.length?warns.map(w=>'⚠ '+w).join('\n')+'\n':'')+txt.slice(1).join('\n');
-    cur.summary={lenM:totalLen/1000};save();
+    cur.summary={lenM:totalLen/1000,billM:totalBill,cost:totalCost};save();
   }
   let timer;function schedule(){clearTimeout(timer);timer=setTimeout(compute,220)}
   $('copy').addEventListener('click',async()=>{
